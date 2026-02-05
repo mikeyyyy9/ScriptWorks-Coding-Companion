@@ -15,14 +15,14 @@ html, body {
   overflow: hidden;
 }
 
-/* STARFIELD CANVAS */
+/* STARFIELD */
 canvas {
   position: fixed;
   inset: 0;
   z-index: 0;
 }
 
-/* MAIN LAYOUT */
+/* LAYOUT */
 #layout {
   position: relative;
   z-index: 2;
@@ -111,7 +111,17 @@ canvas {
   text-align: center;
   letter-spacing: 0.4px;
   color: #e5e7eb;
+  position: relative;
 }
+
+#header img {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 24px;
+}
+
 #headerSubtitle {
   font-size: 12px;
   color: #9ca3af;
@@ -129,7 +139,7 @@ canvas {
   box-sizing: border-box;
 }
 
-/* PLAIN MESSAGES (NO BUBBLES) */
+/* NORMAL MESSAGES */
 .message {
   font-size: 15px;
   line-height: 1.5;
@@ -150,29 +160,28 @@ canvas {
 .script-bubble {
   background: #1f1f1f;
   border-radius: 14px;
-  padding: 0;
-  overflow: hidden;
-  margin-top: 6px;
   border: 1px solid #333;
-  max-width: 100%;
+  margin-top: 10px;
+  padding-top: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 6px;
 }
 
 .script-bubble-header {
+  background: #181818;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: #181818; /* darker gray top bar */
-  border-bottom: 1px solid #333;
-  font-size: 13px;
-  color: #e5e7eb;
 }
 
 .script-title {
+  font-size: 14px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #e5e7eb;
 }
 
 .script-copy-btn {
@@ -184,25 +193,20 @@ canvas {
   color: #9ca3af;
   cursor: pointer;
   font-size: 12px;
-  padding: 4px 6px;
 }
 .script-copy-btn:hover {
   color: #e5e7eb;
 }
 
-.script-copy-icon {
-  font-size: 12px;
-}
-
-/* SCRIPT CONTENT */
 .script-content {
-  padding: 10px 12px 12px 12px;
   background: #111;
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  padding: 12px;
+  border-radius: 10px;
+  font-family: "JetBrains Mono", monospace;
   font-size: 13px;
   color: #e5e7eb;
-  overflow-x: auto;
   white-space: pre;
+  overflow-x: auto;
 }
 
 /* TYPING INDICATOR */
@@ -245,9 +249,9 @@ canvas {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #020617;
+  background: #1f1f1f;
   border-radius: 999px;
-  border: 1px solid #1f2937;
+  border: 1px solid #333;
   padding: 6px 10px 6px 14px;
   flex: 1;
 }
@@ -265,7 +269,7 @@ canvas {
 }
 
 #sendBtn {
-  background: #6b21a8;
+  background: #4b4b4b;
   border: none;
   color: white;
   padding: 8px 14px;
@@ -274,7 +278,7 @@ canvas {
   border-radius: 999px;
 }
 #sendBtn:hover {
-  background: #7e22ce;
+  background: #5c5c5c;
 }
 
 /* SCROLLBARS */
@@ -305,6 +309,7 @@ canvas {
   <!-- MAIN CHAT -->
   <div id="main">
     <div id="header">
+      <img src="./Rocket.png">
       ScriptWorks Coding AI
       <div id="headerSubtitle">Your intelligent coding companion</div>
     </div>
@@ -323,7 +328,7 @@ canvas {
 
 <script>
 /* -------------------------
-   CHAT STORAGE SYSTEM
+   CHAT STORAGE
 --------------------------*/
 let chats = JSON.parse(localStorage.getItem("scriptworks_chats") || "{}");
 let currentChatId = localStorage.getItem("scriptworks_current_chat") || null;
@@ -331,14 +336,12 @@ let currentChatId = localStorage.getItem("scriptworks_current_chat") || null;
 const chatBox = document.getElementById("chat");
 const input = document.getElementById("msg");
 const chatList = document.getElementById("chatList");
-const sendBtn = document.getElementById("sendBtn");
 
 let typingIndicatorEl = null;
 
 function saveChats() {
   localStorage.setItem("scriptworks_chats", JSON.stringify(chats));
 }
-
 function saveCurrentChat() {
   if (currentChatId) {
     localStorage.setItem("scriptworks_current_chat", currentChatId);
@@ -419,10 +422,8 @@ function addScriptBubble(title, code, save = true) {
 
   const copyBtn = document.createElement("button");
   copyBtn.className = "script-copy-btn";
-  copyBtn.innerHTML = `<span class="script-copy-icon">📄</span><span>Copy</span>`;
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(code || "").catch(() => {});
-  };
+  copyBtn.innerHTML = `📄 Copy`;
+  copyBtn.onclick = () => navigator.clipboard.writeText(code || "");
 
   header.appendChild(titleEl);
   header.appendChild(copyBtn);
@@ -468,27 +469,27 @@ function removeTypingIndicator() {
 }
 
 /* -------------------------
-   PROMPT TITLE SUMMARIZER
+   TITLE SUMMARIZER
 --------------------------*/
 function summarizePrompt(prompt) {
   if (!prompt) return "Generated Script";
 
   let p = prompt.toLowerCase();
   const fillers = [
-    "make me", "make a", "make the", "make", "create me", "create a", "create the", "create",
-    "can you", "could you", "please", "for me", "for my game", "for my", "write me", "write a",
-    "generate", "give me", "i need", "i want", "build me", "build a"
+    "make me", "make a", "make the", "make",
+    "create me", "create a", "create the", "create",
+    "can you", "could you", "please", "for me",
+    "for my game", "for my", "write me", "write a",
+    "generate", "give me", "i need", "i want",
+    "build me", "build a"
   ];
-  fillers.forEach(f => {
-    p = p.replace(f, "");
-  });
+  fillers.forEach(f => p = p.replace(f, ""));
 
   p = p.replace(/\s+/g, " ").trim();
   if (!p) return "Generated Script";
 
   const words = p.split(" ");
-  const maxWords = 5;
-  const sliced = words.slice(0, maxWords);
+  const sliced = words.slice(0, 5);
   const titleRaw = sliced.join(" ");
 
   const title = titleRaw.split(" ").map(w => {
@@ -504,31 +505,28 @@ function summarizePrompt(prompt) {
    SCRIPT DETECTION
 --------------------------*/
 function handleAiResponse(userPrompt, aiText) {
-  // Look for code block ```...```
-  const codeBlockRegex = /```[\s\S]*?```/;
-  const match = aiText.match(codeBlockRegex);
+  const codeRegex = /```([\s\S]*?)```/;
+  const match = aiText.match(codeRegex);
 
   if (!match) {
-    // No code, just plain AI message
     addMessage("ai", aiText);
     return;
   }
 
-  const codeBlock = match[0];
-  let code = codeBlock.replace(/```[\s\S]*?\n?/, "").replace(/```$/, "");
-  code = code.trim();
-
+  const code = match[1].trim();
   const before = aiText.slice(0, match.index).trim();
-  const after = aiText.slice(match.index + codeBlock.length).trim();
+  const after = aiText.slice(match.index + match[0].length).trim();
 
   if (before) addMessage("ai", before);
+
   const title = summarizePrompt(userPrompt);
   addScriptBubble(title, code);
+
   if (after) addMessage("ai", after);
 }
 
 /* -------------------------
-   SEND MESSAGE (CALL BACKEND)
+   SEND MESSAGE
 --------------------------*/
 async function send() {
   if (!input.value.trim() || !currentChatId) return;
@@ -538,7 +536,6 @@ async function send() {
   autoResizeTextarea();
 
   addMessage("user", text);
-
   showTypingIndicator();
 
   try {
@@ -571,7 +568,6 @@ function autoResizeTextarea() {
   input.style.height = "auto";
   input.style.height = Math.min(input.scrollHeight, 120) + "px";
 }
-
 input.addEventListener("input", autoResizeTextarea);
 
 input.addEventListener("keydown", (e) => {
@@ -589,13 +585,11 @@ if (!currentChatId || !chats[currentChatId]) {
   newChat();
 } else {
   renderChat();
-
-/* ensure currentChatId is saved */
   saveCurrentChat();
 }
 
 /* -------------------------
-   STARFIELD BACKGROUND
+   STARFIELD
 --------------------------*/
 const canvas = document.getElementById("stars");
 const ctx = canvas.getContext("2d");
