@@ -30,7 +30,7 @@ app.post("/api/chat", async (req, res) => {
         "Authorization": `Bearer ${API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5.2",
         messages: [
           { role: "system", content: "You are ScriptWorks Coding AI, a helpful coding assistant." },
           { role: "user", content: userMessage }
@@ -54,3 +54,4 @@ app.post("/api/chat", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port " + PORT));
+
