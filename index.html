@@ -125,33 +125,111 @@ canvas {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   box-sizing: border-box;
 }
 
-/* TRUE ROUNDED BUBBLES */
+/* PLAIN MESSAGES (NO BUBBLES) */
 .message {
-  max-width: 70%;
-  padding: 14px 18px;
-  border-radius: 20px;
-  line-height: 1.5;
   font-size: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  line-height: 1.5;
   white-space: pre-wrap;
 }
-
-.user {
-  background: #1e3a8a;
-  color: #dbeafe;
+.message.user {
   align-self: flex-end;
-  border-bottom-right-radius: 4px;
+  text-align: right;
+  color: #dbeafe;
+}
+.message.ai {
+  align-self: flex-start;
+  text-align: left;
+  color: #e5e7eb;
 }
 
-.ai {
-  background: #6b21a8;
-  color: #fce7f3;
+/* SCRIPT BUBBLE */
+.script-bubble {
+  background: #1f1f1f;
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  margin-top: 6px;
+  border: 1px solid #333;
+  max-width: 100%;
+}
+
+.script-bubble-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #181818; /* darker gray top bar */
+  border-bottom: 1px solid #333;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+.script-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.script-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+.script-copy-btn:hover {
+  color: #e5e7eb;
+}
+
+.script-copy-icon {
+  font-size: 12px;
+}
+
+/* SCRIPT CONTENT */
+.script-content {
+  padding: 10px 12px 12px 12px;
+  background: #111;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  color: #e5e7eb;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* TYPING INDICATOR */
+.typing-indicator {
   align-self: flex-start;
-  border-bottom-left-radius: 4px;
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #9ca3af;
+  animation: blink 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
 }
 
 /* INPUT BAR */
@@ -159,28 +237,47 @@ canvas {
   display: flex;
   border-top: 1px solid #222;
   background: rgba(0,0,0,0.7);
+  padding: 10px 14px;
+  box-sizing: border-box;
 }
 
-#inputBar input {
+#inputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #020617;
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  padding: 6px 10px 6px 14px;
   flex: 1;
-  background: black;
+}
+
+#msg {
+  flex: 1;
+  background: transparent;
   border: none;
   color: white;
-  padding: 14px;
+  padding: 6px 0;
   outline: none;
-  font-size: 15px;
+  font-size: 14px;
+  resize: none;
+  max-height: 120px;
 }
 
-#inputBar button {
+#sendBtn {
   background: #6b21a8;
   border: none;
   color: white;
-  padding: 14px 20px;
+  padding: 8px 14px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
+  border-radius: 999px;
+}
+#sendBtn:hover {
+  background: #7e22ce;
 }
 
-/* SMALL SCROLLBAR TWEAK */
+/* SCROLLBARS */
 #chatList::-webkit-scrollbar,
 #chat::-webkit-scrollbar {
   width: 6px;
@@ -215,8 +312,10 @@ canvas {
     <div id="chat"></div>
 
     <div id="inputBar">
-      <input id="msg" placeholder="Ask me anything about coding..." />
-      <button onclick="send()">Send</button>
+      <div id="inputWrapper">
+        <textarea id="msg" placeholder="Ask me anything about coding..." rows="1"></textarea>
+        <button id="sendBtn" onclick="send()">Send</button>
+      </div>
     </div>
   </div>
 
@@ -227,26 +326,37 @@ canvas {
    CHAT STORAGE SYSTEM
 --------------------------*/
 let chats = JSON.parse(localStorage.getItem("scriptworks_chats") || "{}");
-let currentChatId = null;
+let currentChatId = localStorage.getItem("scriptworks_current_chat") || null;
 
 const chatBox = document.getElementById("chat");
 const input = document.getElementById("msg");
 const chatList = document.getElementById("chatList");
+const sendBtn = document.getElementById("sendBtn");
+
+let typingIndicatorEl = null;
 
 function saveChats() {
   localStorage.setItem("scriptworks_chats", JSON.stringify(chats));
+}
+
+function saveCurrentChat() {
+  if (currentChatId) {
+    localStorage.setItem("scriptworks_current_chat", currentChatId);
+  }
 }
 
 function newChat() {
   currentChatId = "chat_" + Date.now();
   chats[currentChatId] = [];
   saveChats();
+  saveCurrentChat();
   renderChatList();
   renderChat();
 }
 
 function loadChat(id) {
   currentChatId = id;
+  saveCurrentChat();
   renderChat();
 }
 
@@ -255,7 +365,6 @@ function renderChatList() {
   Object.keys(chats).forEach(id => {
     const first = chats[id][0]?.text || "New Chat";
     const title = first.substring(0, 30) + (first.length > 30 ? "..." : "");
-
     const div = document.createElement("div");
     div.className = "chatItem";
     div.textContent = title;
@@ -264,11 +373,21 @@ function renderChatList() {
   });
 }
 
-function renderChat() {
+function clearChatBox() {
   chatBox.innerHTML = "";
-  if (!currentChatId) return;
+}
 
-  chats[currentChatId].forEach(m => addMessage(m.role, m.text, false));
+function renderChat() {
+  clearChatBox();
+  if (!currentChatId || !chats[currentChatId]) return;
+
+  chats[currentChatId].forEach(m => {
+    if (m.type === "script") {
+      addScriptBubble(m.title, m.text, false);
+    } else {
+      addMessage(m.role, m.text, false);
+    }
+  });
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -279,12 +398,133 @@ function addMessage(role, text, save = true) {
   chatBox.appendChild(div);
 
   if (save && currentChatId) {
-    chats[currentChatId].push({ role, text });
+    chats[currentChatId].push({ role, text, type: "text" });
     saveChats();
     renderChatList();
   }
 
   chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addScriptBubble(title, code, save = true) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "script-bubble";
+
+  const header = document.createElement("div");
+  header.className = "script-bubble-header";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "script-title";
+  titleEl.textContent = title || "Generated Script";
+
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "script-copy-btn";
+  copyBtn.innerHTML = `<span class="script-copy-icon">📄</span><span>Copy</span>`;
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(code || "").catch(() => {});
+  };
+
+  header.appendChild(titleEl);
+  header.appendChild(copyBtn);
+
+  const content = document.createElement("pre");
+  content.className = "script-content";
+  content.textContent = code || "";
+
+  wrapper.appendChild(header);
+  wrapper.appendChild(content);
+  chatBox.appendChild(wrapper);
+
+  if (save && currentChatId) {
+    chats[currentChatId].push({ role: "ai", text: code, type: "script", title });
+    saveChats();
+    renderChatList();
+  }
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/* -------------------------
+   TYPING INDICATOR
+--------------------------*/
+function showTypingIndicator() {
+  removeTypingIndicator();
+  typingIndicatorEl = document.createElement("div");
+  typingIndicatorEl.className = "typing-indicator";
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("div");
+    dot.className = "typing-dot";
+    typingIndicatorEl.appendChild(dot);
+  }
+  chatBox.appendChild(typingIndicatorEl);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  if (typingIndicatorEl && typingIndicatorEl.parentNode) {
+    typingIndicatorEl.parentNode.removeChild(typingIndicatorEl);
+  }
+  typingIndicatorEl = null;
+}
+
+/* -------------------------
+   PROMPT TITLE SUMMARIZER
+--------------------------*/
+function summarizePrompt(prompt) {
+  if (!prompt) return "Generated Script";
+
+  let p = prompt.toLowerCase();
+  const fillers = [
+    "make me", "make a", "make the", "make", "create me", "create a", "create the", "create",
+    "can you", "could you", "please", "for me", "for my game", "for my", "write me", "write a",
+    "generate", "give me", "i need", "i want", "build me", "build a"
+  ];
+  fillers.forEach(f => {
+    p = p.replace(f, "");
+  });
+
+  p = p.replace(/\s+/g, " ").trim();
+  if (!p) return "Generated Script";
+
+  const words = p.split(" ");
+  const maxWords = 5;
+  const sliced = words.slice(0, maxWords);
+  const titleRaw = sliced.join(" ");
+
+  const title = titleRaw.split(" ").map(w => {
+    if (!w) return "";
+    if (w.length <= 3) return w.toUpperCase();
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ").trim();
+
+  return title || "Generated Script";
+}
+
+/* -------------------------
+   SCRIPT DETECTION
+--------------------------*/
+function handleAiResponse(userPrompt, aiText) {
+  // Look for code block ```...```
+  const codeBlockRegex = /```[\s\S]*?```/;
+  const match = aiText.match(codeBlockRegex);
+
+  if (!match) {
+    // No code, just plain AI message
+    addMessage("ai", aiText);
+    return;
+  }
+
+  const codeBlock = match[0];
+  let code = codeBlock.replace(/```[\s\S]*?\n?/, "").replace(/```$/, "");
+  code = code.trim();
+
+  const before = aiText.slice(0, match.index).trim();
+  const after = aiText.slice(match.index + codeBlock.length).trim();
+
+  if (before) addMessage("ai", before);
+  const title = summarizePrompt(userPrompt);
+  addScriptBubble(title, code);
+  if (after) addMessage("ai", after);
 }
 
 /* -------------------------
@@ -295,8 +535,11 @@ async function send() {
 
   const text = input.value;
   input.value = "";
+  autoResizeTextarea();
 
   addMessage("user", text);
+
+  showTypingIndicator();
 
   try {
     const response = await fetch("https://scriptworks-coding-companion.onrender.com/api/chat", {
@@ -306,6 +549,7 @@ async function send() {
     });
 
     const data = await response.json();
+    removeTypingIndicator();
 
     if (data.error) {
       addMessage("ai", "API error: " + (data.error.message || "Unknown error"));
@@ -313,14 +557,42 @@ async function send() {
     }
 
     const aiReply = data.choices?.[0]?.message?.content || "No response from AI.";
-    addMessage("ai", aiReply);
+    handleAiResponse(text, aiReply);
   } catch (err) {
+    removeTypingIndicator();
     addMessage("ai", "Network error talking to backend.");
   }
 }
 
+/* -------------------------
+   INPUT BEHAVIOR
+--------------------------*/
+function autoResizeTextarea() {
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 120) + "px";
+}
+
+input.addEventListener("input", autoResizeTextarea);
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+/* -------------------------
+   INITIALIZE
+--------------------------*/
 renderChatList();
-if (!currentChatId) newChat();
+if (!currentChatId || !chats[currentChatId]) {
+  newChat();
+} else {
+  renderChat();
+
+/* ensure currentChatId is saved */
+  saveCurrentChat();
+}
 
 /* -------------------------
    STARFIELD BACKGROUND
